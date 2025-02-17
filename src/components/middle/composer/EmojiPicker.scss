@@ -64,4 +64,10 @@
       }
     }
   }
+
+  .folder-icon {
+    width: 36px;
+    height: 36px;
+    filter: invert(48%) sepia(6%) saturate(343%) hue-rotate(167deg) brightness(94%) contrast(87%);
+  }
 }

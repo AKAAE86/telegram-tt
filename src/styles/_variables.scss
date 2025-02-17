@@ -313,6 +313,7 @@ $color-message-story-mention-to: #74bcff;
 
   --middle-header-panes-height: 0px;
 
+  --color-telegram-blue-filter: invert(43%) sepia(99%) saturate(1245%) hue-rotate(189deg) brightness(90%) contrast(92%);;
   body.is-ios {
     --layer-transition: 650ms cubic-bezier(0.22, 1, 0.36, 1);
     --layer-transition-behind: 650ms cubic-bezier(0.33, 1, 0.68, 1);

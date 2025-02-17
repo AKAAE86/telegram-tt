@@ -24,6 +24,9 @@ type OwnProps = {
   tabIndex?: number;
   teactExperimentControlled?: boolean;
   inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search';
+  withIconButton?: boolean;
+  iconSrc?: string;
+  onIconClick?: () => void;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   onInput?: (e: FormEvent<HTMLInputElement>) => void;
   onKeyPress?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -48,6 +51,9 @@ const InputText: FC<OwnProps> = ({
   maxLength,
   tabIndex,
   teactExperimentControlled,
+  withIconButton = false,
+  iconSrc,
+  onIconClick,
   onChange,
   onInput,
   onKeyPress,
@@ -64,34 +70,52 @@ const InputText: FC<OwnProps> = ({
     disabled && 'disabled',
     readOnly && 'disabled',
     labelText && 'with-label',
+    withIconButton && 'with-icon',
     className,
   );
 
   return (
     <div className={fullClassName} dir={lang.isRtl ? 'rtl' : undefined}>
-      <input
-        ref={ref}
-        className="form-control"
-        type="text"
-        id={id}
-        dir="auto"
-        value={value || ''}
-        tabIndex={tabIndex}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        disabled={disabled}
-        readOnly={readOnly}
-        onChange={onChange}
-        onInput={onInput}
-        onKeyPress={onKeyPress}
-        onKeyDown={onKeyDown}
-        onBlur={onBlur}
-        onPaste={onPaste}
-        aria-label={labelText}
-        teactExperimentControlled={teactExperimentControlled}
-      />
+      <div className={buildClassName('input-button', 'input-wrapper')}>
+        <input
+          ref={ref}
+          className="form-control"
+          type="text"
+          id={id}
+          dir="auto"
+          value={value || ''}
+          tabIndex={tabIndex}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          disabled={disabled}
+          readOnly={readOnly}
+          onChange={onChange}
+          onInput={onInput}
+          onKeyPress={onKeyPress}
+          onKeyDown={onKeyDown}
+          onBlur={onBlur}
+          onPaste={onPaste}
+          aria-label={labelText}
+          teactExperimentControlled={teactExperimentControlled}
+        />
+        {withIconButton && (
+          <button
+            type="button"
+            className={buildClassName('input-button', 'input-icon-button')}
+            onClick={onIconClick}
+            tabIndex={-1}
+            aria-label="Select emoji"
+          >
+            <img
+              src={iconSrc}
+              alt=""
+              className={buildClassName('input-button', 'input-icon')}
+            />
+          </button>
+        )}
+      </div>
       {labelText && (
         <label htmlFor={id}>{labelText}</label>
       )}

@@ -21,6 +21,7 @@ import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
 
+import useAppLayout, { getIsMobile } from '../../../hooks/useAppLayout';
 import useDerivedState from '../../../hooks/useDerivedState';
 import { useFolderManagerForUnreadCounters } from '../../../hooks/useFolderManager';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -59,7 +60,7 @@ type StateProps = {
 };
 
 const SAVED_MESSAGES_HOTKEY = '0';
-const FIRST_FOLDER_INDEX = 0;
+export const FIRST_FOLDER_INDEX = 0;
 
 const ChatFolders: FC<OwnProps & StateProps> = ({
   foldersDispatch,
@@ -324,6 +325,8 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
 
   const shouldRenderFolders = folderTabs && folderTabs.length > 1;
 
+  const { isMobile } = useAppLayout();
+
   return (
     <div
       ref={ref}
@@ -334,7 +337,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
       )}
     >
       {shouldRenderStoryRibbon && <StoryRibbon isClosing={isStoryRibbonClosing} />}
-      {shouldRenderFolders ? (
+      {shouldRenderFolders && isMobile ? (
         <TabList
           contextRootElementSelector="#LeftColumn"
           tabs={folderTabs}

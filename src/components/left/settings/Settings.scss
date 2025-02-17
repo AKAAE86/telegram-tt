@@ -88,6 +88,10 @@
 
   @include mixins.side-panel-section;
 
+  &.with-emoji {
+    position: relative;
+  }
+
   &.no-border {
     margin-bottom: 0;
     box-shadow: none;

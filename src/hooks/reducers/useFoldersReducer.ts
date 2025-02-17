@@ -109,15 +109,15 @@ export type FoldersState = {
   error?: string;
   folderId?: number;
   chatFilter: string;
-  folder: Omit<ApiChatFolder, 'id' | 'description' | 'emoticon'>;
+  folder: Omit<ApiChatFolder, 'id' | 'description'>;
   includeFilters?: FolderIncludeFilters;
   excludeFilters?: FolderExcludeFilters;
 };
 export type FoldersActions = (
   'setTitle' | 'saveFilters' | 'editFolder' | 'reset' | 'setChatFilter' | 'setIsLoading' | 'setError' |
   'editIncludeFilters' | 'editExcludeFilters' | 'setIncludeFilters' | 'setExcludeFilters' | 'setIsTouched' |
-  'setFolderId' | 'setIsChatlist'
-  );
+  'setFolderId' | 'setIsChatlist' | 'setEmoticon' | 'setApiCustomEmojiEntity'
+);
 export type FolderEditDispatch = Dispatch<FoldersState, FoldersActions>;
 
 const INITIAL_STATE: FoldersState = {
@@ -250,6 +250,27 @@ const foldersReducer: StateReducer<FoldersState, FoldersActions> = (
       };
     case 'reset':
       return INITIAL_STATE;
+    case 'setEmoticon':
+      return {
+        ...state,
+        folder: {
+          ...state.folder,
+          emoticon: action.payload,
+        },
+        isTouched: true,
+      };
+    case 'setApiCustomEmojiEntity':
+      return {
+        ...state,
+        folder: {
+          ...state.folder,
+          title: {
+            ...state.folder.title,
+            entities: [action.payload],
+          },
+        },
+        isTouched: true,
+      };
     default:
       return state;
   }

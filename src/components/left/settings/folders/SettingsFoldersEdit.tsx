@@ -4,16 +4,17 @@ import React, {
 } from '../../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../../global';
 
-import type { ApiChatlistExportedInvite } from '../../../../api/types';
 import type {
   FolderEditDispatch,
   FoldersState,
 } from '../../../../hooks/reducers/useFoldersReducer';
+import { type ApiChatlistExportedInvite, ApiMessageEntityTypes, type ApiSticker } from '../../../../api/types';
 
 import { STICKER_SIZE_FOLDER_SETTINGS } from '../../../../config';
 import { isUserId } from '../../../../global/helpers';
 import { selectCanShareFolder } from '../../../../global/selectors';
 import { selectCurrentLimit } from '../../../../global/selectors/limits';
+import buildClassName from '../../../../util/buildClassName';
 import { findIntersectionWithSet } from '../../../../util/iteratees';
 import { MEMO_EMPTY_ARRAY } from '../../../../util/memo';
 import { CUSTOM_PEER_EXCLUDED_CHAT_TYPES, CUSTOM_PEER_INCLUDED_CHAT_TYPES } from '../../../../util/objects/customPeer';
@@ -27,10 +28,14 @@ import AnimatedIcon from '../../../common/AnimatedIcon';
 import GroupChatInfo from '../../../common/GroupChatInfo';
 import Icon from '../../../common/icons/Icon';
 import PrivateChatInfo from '../../../common/PrivateChatInfo';
+import { IconMap } from '../../../common/SideBarLayout';
 import FloatingActionButton from '../../../ui/FloatingActionButton';
 import InputText from '../../../ui/InputText';
 import ListItem from '../../../ui/ListItem';
 import Spinner from '../../../ui/Spinner';
+import FolderEmojiPicker from './FolderEmojiPicker';
+
+import folderIconPath from '../../../../assets/icons/folder.svg';
 
 type OwnProps = {
   state: FoldersState;
@@ -94,6 +99,12 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
 
   const [isIncludedChatsListExpanded, setIsIncludedChatsListExpanded] = useState(false);
   const [isExcludedChatsListExpanded, setIsExcludedChatsListExpanded] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
+  function getInitialIconPath() {
+    return state.folder.emoticon ? (IconMap.get(state.folder.emoticon) ?? folderIconPath) : folderIconPath;
+  }
+  const [folderIconSrc, setFolderIconSrc] = useState(getInitialIconPath());
 
   useEffect(() => {
     if (isRemoved) {
@@ -212,6 +223,45 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
     }
   }, [onSaveFolder, onOpenInvite, state.isTouched]);
 
+  const handleIconClick = useCallback(() => {
+    setIsEmojiPickerOpen(!isEmojiPickerOpen);
+  }, [isEmojiPickerOpen]);
+  const handleEmojiSelect = useCallback((selectedEmoji: string) => {
+    const currentTitle = state.folder.title.text;
+    dispatch({
+      type: 'setTitle',
+      payload: (currentTitle || '') + selectedEmoji,
+    });
+    setIsEmojiPickerOpen(false);
+  }, [dispatch, state.folder.title.text]);
+
+  const handleCustomEmojiSelect = useCallback((customEmoji: ApiSticker) => {
+    const currentTitle = state.folder.title.text;
+    dispatch({
+      type: 'setTitle',
+      payload: (currentTitle || '') + customEmoji.emoji,
+    });
+    dispatch({
+      type: 'setApiCustomEmojiEntity',
+      payload: {
+        type: ApiMessageEntityTypes.CustomEmoji,
+        offset: currentTitle.length,
+        length: customEmoji.id.length,
+        documentId: customEmoji.id,
+      },
+    });
+  }, [dispatch, state.folder.title.text]);
+
+  const handleFolderSelect = useCallback((emoji: string, path: string) => {
+    dispatch({ type: 'setEmoticon', payload: emoji });
+    setFolderIconSrc(path);
+    setIsEmojiPickerOpen(false);
+  }, [dispatch]);
+
+  const handleEmojiClose = useCallback(() => {
+    setIsEmojiPickerOpen(false);
+  }, []);
+
   function renderChatType(key: string, mode: 'included' | 'excluded') {
     const chatType = mode === 'included'
       ? CUSTOM_PEER_INCLUDED_CHAT_TYPES.find(({ type: typeKey }) => typeKey === key)
@@ -282,7 +332,7 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
   return (
     <div className="settings-fab-wrapper">
       <div className="settings-content no-border custom-scroll">
-        <div className="settings-content-header">
+        <div className={buildClassName('settings-content-header', 'with-emoji')}>
           <AnimatedIcon
             size={STICKER_SIZE_FOLDER_SETTINGS}
             tgsUrl={LOCAL_TGS_URLS.FoldersNew}
@@ -302,7 +352,20 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
             value={state.folder.title.text}
             onChange={handleChange}
             error={state.error && state.error === ERROR_NO_TITLE ? ERROR_NO_TITLE : undefined}
+            withIconButton
+            iconSrc={folderIconSrc}
+            onIconClick={handleIconClick}
           />
+
+          {isEmojiPickerOpen && (
+            <FolderEmojiPicker
+              isOpen={isEmojiPickerOpen}
+              onClose={handleEmojiClose}
+              onEmojiSelect={handleEmojiSelect}
+              onFolderSelect={handleFolderSelect}
+              onCustomEmojiSelect={handleCustomEmojiSelect}
+            />
+          )}
         </div>
 
         {!isOnlyInvites && (

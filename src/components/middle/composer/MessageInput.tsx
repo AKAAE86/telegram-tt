@@ -3,6 +3,7 @@ import type { FC } from '../../../lib/teact/teact';
 import React, {
   getIsHeavyAnimating,
   memo, useEffect, useLayoutEffect,
+  useMemo,
   useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -34,6 +35,7 @@ import useOldLang from '../../../hooks/useOldLang';
 import useInputCustomEmojis from './hooks/useInputCustomEmojis';
 
 import Icon from '../../common/icons/Icon';
+import { MarkdownEditor } from '../../common/MarkdownEditor';
 import Button from '../../ui/Button';
 import TextTimer from '../../ui/TextTimer';
 import TextFormatter from './TextFormatter.async';
@@ -154,6 +156,14 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   if (ref) {
     inputRef = ref;
   }
+
+  const markdownEditor = useMemo(() => {
+    return new MarkdownEditor();
+  }, []);
+
+  useEffect(() => {
+    markdownEditor.initEditor(inputRef.current);
+  }, [inputRef, markdownEditor]);
 
   // eslint-disable-next-line no-null/no-null
   const selectionTimeoutRef = useRef<number>(null);

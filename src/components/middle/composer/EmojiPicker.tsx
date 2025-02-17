@@ -32,6 +32,7 @@ import useScrolledState from '../../../hooks/useScrolledState';
 import useAsyncRendering from '../../right/hooks/useAsyncRendering';
 
 import Icon from '../../common/icons/Icon';
+import { IconConfig } from '../../common/SideBarLayout';
 import Button from '../../ui/Button';
 import Loading from '../../ui/Loading';
 import EmojiCategory from './EmojiCategory';
@@ -41,6 +42,8 @@ import './EmojiPicker.scss';
 type OwnProps = {
   className?: string;
   onEmojiSelect: (emoji: string, name: string) => void;
+  isRenderFolderIcons?: boolean;
+  onFolderSelect?: (emoji: string, path: any) => void;
 };
 
 type StateProps = Pick<GlobalState, 'recentEmojis'>;
@@ -75,6 +78,8 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
   className,
   recentEmojis,
   onEmojiSelect,
+  isRenderFolderIcons = false,
+  onFolderSelect,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -207,6 +212,32 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
     );
   }
 
+  const clickFolderIcons = useLastCallback((emoji, path) => {
+    onFolderSelect?.(emoji, path);
+  });
+
+  function renderFolderIcons(config: { emoji: string; path: string }) {
+    const { emoji, path } = config;
+
+    return emoji && (
+      <Button
+        key={path}
+        className="symbol-set-button"
+        round
+        faded
+        color="translucent"
+        // eslint-disable-next-line react/jsx-no-bind
+        onClick={() => clickFolderIcons(emoji, path)}
+      >
+        <img
+          src={path}
+          className="folder-icon"
+          alt=""
+        />
+      </Button>
+    );
+  }
+
   const containerClassName = buildClassName('EmojiPicker', className);
 
   if (!shouldRenderContent) {
@@ -231,6 +262,15 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
       >
         {allCategories.map(renderCategoryButton)}
       </div>
+      {isRenderFolderIcons && (
+        <div
+          ref={headerRef}
+          className={headerClassName}
+          dir={lang.isRtl ? 'rtl' : undefined}
+        >
+          {Object.values(IconConfig).map(renderFolderIcons)}
+        </div>
+      )}
       <div
         ref={containerRef}
         onScroll={handleContentScroll}

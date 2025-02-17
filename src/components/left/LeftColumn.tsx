@@ -1,28 +1,41 @@
 import type { RefObject } from 'react';
 import React, {
-  memo, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useState,
 } from '../../lib/teact/teact';
-import { getActions, withGlobal } from '../../global';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
+import type { ApiChatFolder, ApiMessageEntityCustomEmoji } from '../../api/types';
 import type { GlobalState } from '../../global/types';
 import type { FoldersActions } from '../../hooks/reducers/useFoldersReducer';
 import type { ReducerAction } from '../../hooks/useReducer';
+import type { TabWithEmojiProperties } from '../common/SideBarLayout';
+import type { MenuItemContextAction } from '../ui/ListItem';
+import { ApiMessageEntityTypes } from '../../api/types';
 import { LeftColumnContent, SettingsScreens } from '../../types';
 
+import { ALL_FOLDER_ID } from '../../config';
 import { selectCurrentChat, selectIsForumPanelOpen, selectTabState } from '../../global/selectors';
+import { selectCurrentLimit } from '../../global/selectors/limits';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
+import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import { captureControlledSwipe } from '../../util/swipeController';
 import {
   IS_APP, IS_FIREFOX, IS_MAC_OS, IS_TOUCH_ENV, LAYERS_ANIMATION_NAME,
 } from '../../util/windowEnvironment';
+import { renderTextWithEntities } from '../common/helpers/renderTextWithEntities';
+import { splitEmoji } from '../common/helpers/splitEmoji';
 
 import useFoldersReducer from '../../hooks/reducers/useFoldersReducer';
+import { useFolderManagerForUnreadCounters } from '../../hooks/useFolderManager';
 import { useHotkeys } from '../../hooks/useHotkeys';
+import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import usePrevious from '../../hooks/usePrevious';
 import { useStateRef } from '../../hooks/useStateRef';
 import useSyncEffect from '../../hooks/useSyncEffect';
 
+import CustomEmoji from '../common/CustomEmoji';
+import SideBarLayout from '../common/SideBarLayout';
 import Transition from '../ui/Transition';
 import ArchivedChats from './ArchivedChats.async';
 import LeftMain from './main/LeftMain';
@@ -30,6 +43,7 @@ import NewChat from './newChat/NewChat.async';
 import Settings from './settings/Settings.async';
 
 import './LeftColumn.scss';
+import styles from '../common/CustomEmoji.module.scss';
 
 interface OwnProps {
   ref: RefObject<HTMLDivElement>;
@@ -52,6 +66,9 @@ type StateProps = {
   isClosingSearch?: boolean;
   archiveSettings: GlobalState['archiveSettings'];
   isArchivedStoryRibbonShown?: boolean;
+  chatFoldersById: Record<number, ApiChatFolder>;
+  orderedFolderIds?: number[];
+  activeChatFolder: number;
 };
 
 enum ContentType {
@@ -86,6 +103,9 @@ function LeftColumn({
   isClosingSearch,
   archiveSettings,
   isArchivedStoryRibbonShown,
+  chatFoldersById,
+  orderedFolderIds,
+  activeChatFolder,
 }: OwnProps & StateProps) {
   const {
     setGlobalSearchQuery,
@@ -545,21 +565,159 @@ function LeftColumn({
     }
   }
 
+  const {
+    loadChatFolders,
+    setActiveChatFolder,
+    openDeleteChatFolderModal,
+    openEditChatFolder,
+  } = getActions();
+
+  useEffect(() => {
+    loadChatFolders();
+  }, []);
+
+  const lang = useLang();
+
+  const titleText = orderedFolderIds?.[0] === ALL_FOLDER_ID
+    ? lang('FilterAllChatsShort')
+    : lang('FilterAllChats');
+
+  const allChatsFolder: ApiChatFolder = useMemo(() => {
+    return {
+      id: ALL_FOLDER_ID,
+      title: { text: titleText },
+      includedChatIds: MEMO_EMPTY_ARRAY,
+      excludedChatIds: MEMO_EMPTY_ARRAY,
+    } satisfies ApiChatFolder;
+  }, [titleText]);
+
+  const displayedFolders: ApiChatFolder[] = useMemo(() => {
+    return orderedFolderIds
+      ? orderedFolderIds.map((id) => {
+        if (id === ALL_FOLDER_ID) {
+          return allChatsFolder;
+        }
+
+        return chatFoldersById[id] || {};
+      }).filter(Boolean)
+      : [];
+  }, [chatFoldersById, allChatsFolder, orderedFolderIds]);
+
+  const maxFolders = selectCurrentLimit(getGlobal(), 'dialogFilters');
+  const folderCountersById = useFolderManagerForUnreadCounters();
+  const folderTabs = useMemo(() => {
+    if (!displayedFolders || !displayedFolders.length) {
+      return undefined;
+    }
+
+    return displayedFolders.map((folder, i) => {
+      const { id, title } = folder;
+      const isBlocked = id !== ALL_FOLDER_ID && i > maxFolders - 1;
+      const contextActions: MenuItemContextAction[] = [];
+
+      const customEmojiEntities = title.entities?.filter((entity): entity is ApiMessageEntityCustomEmoji => (
+        'type' in entity && entity.type === ApiMessageEntityTypes.CustomEmoji
+      ));
+
+      const [regularEmoji, titleWithoutEmoji, rawTitle, matched] = splitEmoji(title.text);
+
+      const iconNode = customEmojiEntities?.length ? (
+        <CustomEmoji
+          key={undefined}
+          documentId={customEmojiEntities[0].documentId}
+          size={45}
+          isSelectable
+          withSharedAnimation
+          noPlay={folder.noTitleAnimations}
+          className={styles.tabIcon}
+        />
+      ) : undefined;
+
+      if (id !== ALL_FOLDER_ID) {
+        contextActions.push({
+          title: lang('FilterEdit'),
+          icon: 'edit',
+          handler: () => {
+            openEditChatFolder({ folderId: id });
+          },
+        });
+
+        contextActions.push({
+          title: lang('FilterDelete'),
+          icon: 'delete',
+          destructive: true,
+          handler: () => {
+            openDeleteChatFolderModal({ folderId: id });
+          },
+        });
+      }
+
+      return {
+        id,
+        titleNode: renderTextWithEntities({
+          text: titleWithoutEmoji.length === 0 ? rawTitle : titleWithoutEmoji,
+          entities: title.entities,
+          noCustomEmojiPlayback: folder.noTitleAnimations,
+        }),
+        iconNode: matched ? iconNode : undefined,
+        badgeCount: folderCountersById[id]?.chatsCount,
+        isBadgeActive: Boolean(folderCountersById[id]?.notificationsCount),
+        isBlocked,
+        contextActions: contextActions?.length ? contextActions : undefined,
+        icon: folder.emoticon,
+        regularEmoji: regularEmoji || undefined,
+      } satisfies TabWithEmojiProperties;
+    });
+  }, [
+    displayedFolders, maxFolders, folderCountersById, lang,
+  ]);
+
+  const handleTabClick = useCallback((index: number) => {
+    setActiveChatFolder({ activeChatFolder: index }, { forceOnHeavyAnimation: false });
+  }, []);
+
+  const { closeForumPanel } = getActions();
+
+  const handleSelectSettings = useLastCallback(() => {
+    setContent(LeftColumnContent.Settings);
+  });
+
+  const handleSelectContacts = useLastCallback(() => {
+    setContent(LeftColumnContent.Contacts);
+  });
+
+  const handleSelectArchived = useLastCallback(() => {
+    setContent(LeftColumnContent.Archived);
+    closeForumPanel();
+  });
+
   return (
-    <Transition
-      ref={ref}
-      name={shouldSkipHistoryAnimations ? 'none' : LAYERS_ANIMATION_NAME}
-      renderCount={RENDER_COUNT}
-      activeKey={contentType}
-      shouldCleanup
-      cleanupExceptionKey={ContentType.Main}
-      shouldWrap
-      wrapExceptionKey={ContentType.Main}
-      id="LeftColumn"
-      withSwipeControl
+    <SideBarLayout
+      tabList={folderTabs}
+      onTabSelect={handleTabClick}
+      content={content}
+      onSelectArchived={handleSelectArchived}
+      onSelectContacts={handleSelectContacts}
+      onSelectSettings={handleSelectSettings}
+      onReset={handleReset}
+      shouldSkipAnimations={false}
+      activeChatFolderId={activeChatFolder}
     >
-      {renderContent}
-    </Transition>
+      <Transition
+        ref={ref}
+        name={shouldSkipHistoryAnimations ? 'none' : LAYERS_ANIMATION_NAME}
+        renderCount={RENDER_COUNT}
+        activeKey={contentType}
+        shouldCleanup
+        cleanupExceptionKey={ContentType.Main}
+        shouldWrap
+        wrapExceptionKey={ContentType.Main}
+        id="LeftColumn"
+        withSwipeControl
+      >
+        {renderContent}
+      </Transition>
+    </SideBarLayout>
   );
 }
 
@@ -580,6 +738,10 @@ export default memo(withGlobal<OwnProps>(
       },
     } = tabState;
     const {
+      chatFolders: {
+        byId: chatFoldersById,
+        orderedIds: orderedFolderIds,
+      },
       currentUserId,
       passcode: {
         hasPasscode,
@@ -611,6 +773,9 @@ export default memo(withGlobal<OwnProps>(
       isClosingSearch: tabState.globalSearch.isClosing,
       archiveSettings,
       isArchivedStoryRibbonShown: isArchivedRibbonShown,
+      chatFoldersById,
+      orderedFolderIds,
+      activeChatFolder,
     };
   },
 )(LeftColumn));

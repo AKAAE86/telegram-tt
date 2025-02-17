@@ -12,8 +12,8 @@ import Button from '../../ui/Button';
 type OwnProps = {
   activeTab: SymbolMenuTabs;
   onSwitchTab: (tab: SymbolMenuTabs) => void;
-  onRemoveSymbol: () => void;
-  onSearchOpen: (type: 'stickers' | 'gifs') => void;
+  onRemoveSymbol?: () => void;
+  onSearchOpen?: (type: 'stickers' | 'gifs') => void;
   isAttachmentModal?: boolean;
   canSendPlainText?: boolean;
   canSearch?: boolean;
@@ -63,7 +63,7 @@ const SymbolMenuFooter: FC<OwnProps> = ({
   }
 
   const handleSearchOpen = useLastCallback(() => {
-    onSearchOpen(activeTab === SymbolMenuTabs.Stickers ? 'stickers' : 'gifs');
+    onSearchOpen?.(activeTab === SymbolMenuTabs.Stickers ? 'stickers' : 'gifs');
   });
 
   function stopPropagation(event: any) {
@@ -90,7 +90,7 @@ const SymbolMenuFooter: FC<OwnProps> = ({
       {!isAttachmentModal && renderTabButton(SymbolMenuTabs.Stickers)}
       {!isAttachmentModal && renderTabButton(SymbolMenuTabs.GIFs)}
 
-      {(activeTab === SymbolMenuTabs.Emoji || activeTab === SymbolMenuTabs.CustomEmoji) && (
+      {onRemoveSymbol && (activeTab === SymbolMenuTabs.Emoji || activeTab === SymbolMenuTabs.CustomEmoji) && (
         <Button
           className="symbol-delete-button"
           onClick={onRemoveSymbol}
