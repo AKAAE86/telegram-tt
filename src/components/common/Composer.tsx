@@ -1858,6 +1858,7 @@ const Composer: FC<OwnProps & StateProps> = ({
             onFocus={markInputHasFocus}
             onBlur={unmarkInputHasFocus}
             isNeedPremium={isNeedPremium}
+            needMarkdown
           />
           {isInMessageList && (
             <>

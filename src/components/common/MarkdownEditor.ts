@@ -11,18 +11,20 @@ export class MarkdownEditor {
 
   private isComposing = false;
 
-  public initEditor(editorElement?: HTMLDivElement | null) {
-    this.editorElement = editorElement;
-    if (this.editorElement) {
-      this.editorElement.contentEditable = 'true';
-      this.editorElement.addEventListener('input', this.handleInput.bind(this));
-      this.editorElement.addEventListener('compositionstart', () => {
-        this.isComposing = true;
-      });
-      this.editorElement.addEventListener('compositionend', () => {
-        this.isComposing = false;
-        this.handleInput();
-      });
+  public initEditor(needMarkdown: boolean, editorElement?: HTMLDivElement | null) {
+    if (needMarkdown) {
+      this.editorElement = editorElement;
+      if (this.editorElement) {
+        this.editorElement.contentEditable = 'true';
+        this.editorElement.addEventListener('input', this.handleInput.bind(this));
+        this.editorElement.addEventListener('compositionstart', () => {
+          this.isComposing = true;
+        });
+        this.editorElement.addEventListener('compositionend', () => {
+          this.isComposing = false;
+          this.handleInput();
+        });
+      }
     }
   }
 

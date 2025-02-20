@@ -2,7 +2,7 @@ import type { ChangeEvent, RefObject } from 'react';
 import type { FC } from '../../../lib/teact/teact';
 import React, {
   getIsHeavyAnimating,
-  memo, useEffect, useLayoutEffect,
+  memo, useCallback, useEffect, useLayoutEffect,
   useMemo,
   useRef, useState,
 } from '../../../lib/teact/teact';
@@ -39,6 +39,8 @@ import { MarkdownEditor } from '../../common/MarkdownEditor';
 import Button from '../../ui/Button';
 import TextTimer from '../../ui/TextTimer';
 import TextFormatter from './TextFormatter.async';
+import useCustomContentEditableHistory from './hooks/useHistory';
+import { setCaretPosition } from '../../../util/selection';
 
 const CONTEXT_MENU_CLOSE_DELAY_MS = 100;
 // Focus slows down animation, also it breaks transition layout in Chrome
@@ -77,6 +79,7 @@ type OwnProps = {
   onFocus?: NoneToVoidFunction;
   onBlur?: NoneToVoidFunction;
   isNeedPremium?: boolean;
+  needMarkdown?: boolean;
 };
 
 type StateProps = {
@@ -143,6 +146,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   onFocus,
   onBlur,
   isNeedPremium,
+  needMarkdown,
 }) => {
   const {
     editLastMessage,
@@ -162,9 +166,16 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   }, []);
 
   useEffect(() => {
-    markdownEditor.initEditor(inputRef.current);
-  }, [inputRef, markdownEditor]);
+    markdownEditor.initEditor(needMarkdown ?? false, inputRef.current);
+  }, [inputRef, markdownEditor, needMarkdown]);
 
+  const updateInput = useCallback((content: string) => {
+    if (inputRef.current && content.length > 0) {
+      inputRef.current.innerHTML = content;
+      setCaretPosition(inputRef.current, inputRef.current.textContent?.length ?? 0);
+    }
+  }, []);
+  const { handleInputChange } = useCustomContentEditableHistory(updateInput);
   // eslint-disable-next-line no-null/no-null
   const selectionTimeoutRef = useRef<number>(null);
   // eslint-disable-next-line no-null/no-null
@@ -428,6 +439,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   function handleChange(e: ChangeEvent<HTMLDivElement>) {
     const { innerHTML, textContent } = e.currentTarget;
 
+    handleInputChange(innerHTML);
     onUpdate(innerHTML === SAFARI_BR ? '' : innerHTML);
 
     // Reset focus on the input to remove any active styling when input is cleared
