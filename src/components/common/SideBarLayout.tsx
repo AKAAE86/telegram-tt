@@ -1,5 +1,5 @@
 import type { FC, TeactNode } from '../../lib/teact/teact';
-import React, { useCallback, useRef, useState } from '../../lib/teact/teact';
+import React, { useCallback, useRef } from '../../lib/teact/teact';
 
 import type { MenuItemContextAction } from '../ui/ListItem';
 import { LeftColumnContent } from '../../types';
